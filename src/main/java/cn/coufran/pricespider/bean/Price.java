@@ -1,4 +1,4 @@
-package cn.coufran.pricespider;
+package cn.coufran.pricespider.bean;
 
 import lombok.Data;
 
@@ -9,7 +9,7 @@ import javax.persistence.Id;
 import java.util.Date;
 
 /**
- * @author liuhm8
+ * @author Coufran
  * @version 1.0.0
  * @since 1.0.0
  */
@@ -26,4 +26,5 @@ public class Price {
     private String specification;
     private String unit;
     private Date issuedDate;
+    private Integer originId;
 }
