@@ -27,7 +27,6 @@ public class XinfadiParser implements Parser {
         Elements lines = table.select("tbody>tr:gt(0)");
         for(Element line : lines) {
             Price price = new Price();
-            price.setOriginId(originDatum.getId());
             Elements columns = line.select("td");
             // 品名
             Element name = columns.get(0);
@@ -35,13 +34,13 @@ public class XinfadiParser implements Parser {
             prices.add(price);
             // 最高价
             Element max = columns.get(1);
-            price.setMax(price2Int(max.text()));
+            price.setMaxPrice(price2Int(max.text()));
             // 平均价
             Element average = columns.get(2);
-            price.setAverage(price2Int(average.text()));
+            price.setAveragePrice(price2Int(average.text()));
             // 最低价
             Element min = columns.get(3);
-            price.setMin(price2Int(min.text()));
+            price.setMinPrice(price2Int(min.text()));
             // 规格
             Element specification = columns.get(4);
             price.setSpecification(specification.text());

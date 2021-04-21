@@ -4,8 +4,14 @@ import cn.coufran.pricespider.bean.OriginDatum;
 import cn.coufran.pricespider.bean.Price;
 import cn.coufran.pricespider.bean.Batch;
 import org.hibernate.Session;
-import org.hibernate.SessionFactory;
+import org.hibernate.boot.model.naming.Identifier;
+import org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+
+import javax.persistence.Entity;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
 
 /**
  * @author Coufran
@@ -13,7 +19,7 @@ import org.hibernate.cfg.Configuration;
  * @since 1.0.0
  */
 public class DataManager {
-    private static SessionFactory sessionFactory;
+    private static EntityManagerFactory entityManagerFactory;
 
     static {
         Configuration configuration = new Configuration();
@@ -26,24 +32,50 @@ public class DataManager {
         configuration.setProperty("hibernate.dialect", "org.hibernate.dialect.MySQL5Dialect");
         configuration.setProperty("hibernate.current_session_context_class", "thread");
         configuration.setProperty("hibernate.show_sql", "true");
-        configuration.setProperty("hibernate.hbm2ddl.auto", "update");
+        configuration.setProperty("hibernate.hbm2ddl.auto", "validate");
+        configuration.setPhysicalNamingStrategy(new PhysicalNamingStrategyStandardImpl() {
+            private Identifier toXxxName(Identifier name, JdbcEnvironment context) {
+                if(name == null || "DTYPE".equals(name.getText())) {
+                    return name;
+                }
+                String text = name.getText();
+                for(char c='A'; c<='Z'; c++) {
+                    text = text.replaceAll(""+c, "_" + (char)(c-('A'-'a')));
+                }
+                if(text.startsWith("_")) {
+                    text = text.substring(1);
+                }
+                text = text.replaceAll("__", "_");
+                return Identifier.toIdentifier(text);
+            }
+
+            @Override
+            public Identifier toPhysicalTableName(Identifier name, JdbcEnvironment context) {
+                return this.toXxxName(name, context);
+            }
+
+            @Override
+            public Identifier toPhysicalColumnName(Identifier name, JdbcEnvironment context) {
+                return this.toXxxName(name, context);
+            }
+        });
 
         configuration.addAnnotatedClass(Price.class);
         configuration.addAnnotatedClass(OriginDatum.class);
         configuration.addAnnotatedClass(Batch.class);
 
-        sessionFactory = configuration.buildSessionFactory();
+        entityManagerFactory = configuration.buildSessionFactory();
     }
 
-    public static Session openSession() {
-        Session session = sessionFactory.openSession();
-        session.beginTransaction();
-        return session;
+    public static EntityManager createEntityManager() {
+        EntityManager entityManager = entityManagerFactory.createEntityManager();
+        entityManager.getTransaction().begin();
+        return entityManager;
     }
 
-    public static void closeSession(Session session) {
-        session.getTransaction().commit();
-        session.close();
+    public static void closeEntityManager(EntityManager entityManager) {
+        entityManager.getTransaction().commit();
+        entityManager.close();
     }
 
 }

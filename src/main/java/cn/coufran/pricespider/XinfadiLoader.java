@@ -28,7 +28,7 @@ public class XinfadiLoader implements Loader {
         } catch (IOException e) {
             originDatum.setSuccess(false);
             String message = e.getMessage();
-            originDatum.setErrorMsg(message);
+            originDatum.setErrorMessage(message);
         }
         if(document != null) {
             originDatum.setSuccess(true);

@@ -5,11 +5,11 @@ import cn.coufran.pricespider.bean.OriginDatum;
 import cn.coufran.pricespider.bean.Price;
 import cn.coufran.pricespider.data.DataManager;
 import org.hibernate.Session;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.persistence.EntityManager;
 import java.io.IOException;
-import java.text.DecimalFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -22,32 +22,49 @@ import java.util.List;
  * @since 1.0.0
  */
 public class Spider {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Spider.class);
+
     public static void main(String[] args) throws IOException {
         new Spider().start();
     }
 
-    private Loader loader = new XinfadiLoader();
+    private Loader loader = new XinfadiRetryLoader();
     private Parser parser = new XinfadiParser();
 
     public void start() {
-        Session session = DataManager.openSession();
+        int step = 100;
+        int lastPage = 15441;
+        for(int i=13001; i<=lastPage; i+=step) {
+            this.start(i, Math.min(i+step-1, lastPage));
+        }
+    }
+
+    public void start(int start, int end) {
         Batch batch = new Batch();
         batch.generateNo();
-        batch.setStartDate(new Date());
+        batch.setStartTime(new Date());
 
-        for(int i=1; i<=10; i++) {
+        for(int i=start; i<=end; i++) {
             String url = String.format("http://www.xinfadi.com.cn/marketanalysis/0/list/%s.shtml", i);
             OriginDatum originDatum = loader.load(url);
-            originDatum.setBatchNo(batch.getNo());
+            originDatum.setBatch(batch);
+            batch.addOriginDatum(originDatum);
+            if(!originDatum.getSuccess()) {
+                LOGGER.warn("{} error: {}", i, originDatum.getErrorMessage());
+                continue;
+            }
             List<Price> prices = parser.parse(originDatum);
             for(Price price : prices) {
-                session.save(originDatum);
-                session.save(price);
+                price.setOriginDatum(originDatum);
+                originDatum.addPrice(price);
             }
+            LOGGER.info("{} success", i);
         }
-        batch.setEndDate(new Date());
-        session.save(batch);
-        DataManager.closeSession(session);
+        batch.setEndTime(new Date());
+
+        EntityManager entityManager = DataManager.createEntityManager();
+        entityManager.persist(batch);
+        DataManager.closeEntityManager(entityManager);
     }
 
 }
